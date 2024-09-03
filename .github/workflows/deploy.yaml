@@ -78,9 +78,9 @@ jobs:
           -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
           -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
 
-      - name: Sonar Status
-        run: echo ${{ env.SONAR_STATUS }}
+    - name: Sonar Status
+      run: echo ${{ env.SONAR_STATUS }}
 
-      - name: Check Status
-        if: ${{ env.SONAR_STATUS == 'ERROR' }}
-        run: exit 1
+    - name: Check Status
+      if: ${{ env.SONAR_STATUS == 'ERROR' }}
+      run: exit 1
