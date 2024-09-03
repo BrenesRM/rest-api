@@ -29,7 +29,7 @@ jobs:
       uses: docker/build-push-action@v3
       with:
         push: true
-        tags: ${{ env.REGISTRY }}/${{ env.IMAG_NAME }}:latest
+        tags: ${{ env.REGISTRY }}/${{ env.IMAG_NAME }}:1.0.2
         build-args: |
           APP_ENV=${{ secrets.APP_ENV }}
 
