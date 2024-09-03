@@ -1,3 +1,4 @@
+ /*
 var name = "John Doe"; // Issue: 'var' debe ser cambiada por 'let' or 'const'
 var age = 30; // Issue: 'var' debe ser cambiada por 'let' or 'const'
 var unusedVar = "This is never used"; // Issue: variable sin usar
@@ -27,7 +28,9 @@ console.log(getUserName());
 console.log(calculateAge(1990));
 console.log(calculateUserAge({ yearOfBirth: 1990 }));
 console.log(unsafeFunction("2 + 2")); // Potencial problema de seguridad
+console.log('sonar test')
 
 export default {
   unsafeFunction,
 };
+*/
