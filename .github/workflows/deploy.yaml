@@ -35,7 +35,7 @@ jobs:
 
   test:
     name: Run tests
-    needs: build-and-push
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
