@@ -47,7 +47,7 @@ jobs:
       - run: npm install
       - run: npm run test
 
-            - name: Test succeded?
+      - name: Test succeded?
         if: ${{ success() }}
         run: echo "Test Succeded!!!"
 
