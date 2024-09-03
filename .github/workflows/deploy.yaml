@@ -30,7 +30,7 @@ jobs:
       with:
         push: true
         tags: ${{ env.REGISTRY }}/${{ env.IMAG_NAME }}:latest
-        build-args: | 
+        build-args: |
           APP_ENV=${{ secret.APP_ENV }}
 
   test:
