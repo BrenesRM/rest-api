@@ -55,3 +55,25 @@ jobs:
         if: ${{ failure() }}
         run: |
           curl -X POST -H 'Content-type: application/json' --data '{"text":"${{ env.IMAGE_NAME }} test failed"}' ${{ secrets.SLACK_WEBHOOK_URL }} 
+      
+      #- name: Get SonarCloud status
+      #  run: |
+      #   echo "SONAR_STATUS=$(curl -s -u ${{ secrets.SONAR_TOKEN}}: https://sonarcloud.io/api/qualitygates/project_status?projectKey=${{ secrets.SONAR_PROJECT_KEY }} | jq -r '.projectStatus.status')" >> $GITHUB_ENV
+
+  codeScan:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        # Disabling shallow clone is recommended for improving relevancy of reporting
+        fetch-depth: 0
+    - name: SonarCloud Scan
+      uses: sonarsource/sonarcloud-github-action@master
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+      with:
+        args: >
+          -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+          -Dsonar.projectkey=${{ secrets.SONAR_PROJECT_KEY }}
