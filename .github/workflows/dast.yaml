@@ -42,7 +42,14 @@ jobs:
 
       - name: ZAP Scan
         uses: zaproxy/action-api-scan@v0.7.0
-        continue-on-error: true
+
+        permissions:
+          security-events: write
+          packages: read
+          actions: read
+          contents: read 
+          issues: write       
+        #continue-on-error: true
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           target: 'http://localhost:3000/search?q=123'
