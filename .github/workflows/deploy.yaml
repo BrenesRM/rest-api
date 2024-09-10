@@ -119,7 +119,7 @@ jobs:
 
       - name: Run container
         run: |
-          docker run -d --name rest-api -p 3000:3000 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker run -d --name rest-api -p 3000:3000 ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
       - name: Run Load Test
         run: |
