@@ -2,7 +2,7 @@ name: deploy
 
 on:
   push:
-    branches: ["main-old"] # eliminar old para correr
+    branches: ["main"] # eliminar old para correr
 
 env:
   DOCKER_REGISTRY: brenesrm
@@ -97,5 +97,35 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }} 
         with:
           image: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+  loadTest: 
+    name: loadTest
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        name: Checkout code
+
+      - name: Set up
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: |
+          npm install -g artillery
+          npm install --save-dev artillery-plugin-ensure
+
+      - name: Run container
+        run: |
+          docker run -d --name rest-api -p 3000:3000 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Run Load Test
+        run: |
+          set -e  # Detiene el workflow si la prueba de carga falla.
+
+          artillery run loadTest/basic.yaml || exit 1
+
 
   
