@@ -2,7 +2,7 @@ name: deploy
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main-old"] # eliminar old para correr
 
 env:
   DOCKER_REGISTRY: brenesrm
@@ -97,3 +97,5 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }} 
         with:
           image: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+  
