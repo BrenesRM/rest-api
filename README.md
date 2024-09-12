@@ -216,3 +216,8 @@ This structure gives contributors and users a clear understanding of how the pro
 Image after the test:
 
 
+![GitHub Security](https://github.com/BrenesRM/rest-api/blob/main/sonarcloud.png)
+
+![GitHub Security](https://github.com/BrenesRM/rest-api/blob/main/snyk.png)
+
+![GitHub Security](https://github.com/user-attachments/assets/98aa1d3a-cc32-46b7-8536-be5ee040e34c)
