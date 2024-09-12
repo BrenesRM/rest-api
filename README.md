@@ -3,14 +3,6 @@
 Overview
 This updated YAML configuration defines a GitHub Actions workflow named deploy, which implements two types of security testing: SAST (Static Application Security Testing) using CodeQL and DAST (Dynamic Application Security Testing) using ZAP.
 
-Image after the test:
-
-![GitHub Security](https://github.com/BrenesRM/rest-api/blob/main/sonarcloud.png)
-
-![GitHub Security](https://github.com/BrenesRM/rest-api/blob/main/snyk.png)
-
-![GitHub Security](https://github.com/user-attachments/assets/98aa1d3a-cc32-46b7-8536-be5ee040e34c)
-
 Detailed Breakdown:
 on: push
 The workflow is triggered whenever there is a push to the main branch:
@@ -105,6 +97,14 @@ This project is a RESTful API built using Docker, with a CI/CD pipeline managed 
 - [Dependencies](#dependencies)
 - [Contributing](#contributing)
 - [License](#license)
+
+## Image after the test:
+
+![GitHub Security](https://github.com/BrenesRM/rest-api/blob/main/sonarcloud.png)
+
+![GitHub Security](https://github.com/BrenesRM/rest-api/blob/main/snyk.png)
+
+![GitHub Security](https://github.com/user-attachments/assets/98aa1d3a-cc32-46b7-8536-be5ee040e34c)
 
 ## Project Setup
 
