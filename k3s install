@@ -1,0 +1,309 @@
+# Deploy <!-- omit in toc -->
+
+Este laboratorio no asume la implementación de un flujo CI/CD completo.
+
+# 1. Instalación del cluster K3s
+```
+sudo apt update
+sudo apt upgrade -y
+ufw disable
+
+curl -sfL https://get.k3s.io | sh -
+
+sudo systemctl status k3s
+
+sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+
+kubectl get nodes
+```
+Para remover el cluster: sudo /usr/local/bin/k3s-uninstall.sh
+
+# 2. Instalar Helm
+```
+sudo snap install helm --classic
+```
+
+# 3. Instalar Nginx
+
+Adicionalmente instala el controlador de Prometheus para la extracción de métricas en puerto 10254
+
+```
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+
+kubectl create ns ingress-nginx
+
+helm upgrade -i ingress-nginx ingress-nginx/ingress-nginx \
+--namespace ingress-nginx \
+--set controller.metrics.enabled=true \
+--set controller.podAnnotations."prometheus\.io/scrape"=true \
+--set controller.podAnnotations."prometheus\.io/port"=10254
+```
+
+## 3.1. Validar la instalación
+```
+helm list -A
+```
+Resultado:
+```
+ingress-nginx   ingress-nginx   1 deployed
+```
+En caso de existir otras instalaciones como Traefik se deben eliminar
+```
+helm uninstall traefik -n kube-system
+helm uninstall traefik-crd -n kube-system
+```
+
+# 4. Instalar Flagger
+> [Flagger](https://docs.flagger.app/tutorials/nginx-progressive-delivery)
+
+Con soporte para Nginx
+
+```
+helm repo add flagger https://flagger.app
+
+helm upgrade -i flagger flagger/flagger \
+--namespace ingress-nginx \
+--set prometheus.install=true \
+--set meshProvider=nginx
+```
+
+# 5. Práctica: crear un Deployment con la siguiente configuración:
+
+- nombre: demo-frontend
+- namespace: demo
+- imagen: cachac/demo-frontend:1
+- puerto: 8080
+- replicas: 1
+- requests:
+    memory: "64Mi"
+    cpu: "5m"
+  limits:
+    memory: "256Mi"
+    cpu: "250m"
+
+# 6. Práctica: crear un Ingress con la siguiente configuración:
+- ingress:
+  - nombre: demo-frontend-ingress
+  - namespace: demo
+  - ingressClassName: nginx
+  - host: <ESTUDIANTE>.kubelabs.dev
+  - backend: demo-frontend
+  - puerto: 8080
+
+> Configurar el subdominio del estudiante en el DNS.
+
+# 7. Crear un Service para exponer el Pod.
+```
+kubectl expose deployment demo-frontend --name demo-frontend --port 8080 -n demo
+```
+
+## 7.1. Revisar en browser la aplicación
+En caso de error buscar y eliminar los recursos de Traefik existentes en kube-system, especialmente el Deployment.
+
+## 7.2. Eliminar el Service
+El service se debe eliminar ya que será sustitutido por la implementación de Flagger.
+```
+kubectl delete svc demo-frontend -n demo
+```
+
+# 8. Opcional: Crear un HPA
+CPU Util: 90%
+Memory Util: 90%
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: demo-frontend-hpa
+  namespace: demo
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: demo-frontend
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 90
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 90
+```
+## 8.1. Validar
+```
+kubectl get hpa -n demo -w
+```
+
+# 9. Automatización de Deployment
+
+## 9.1. Validar estrategia
+> [Deployment Strategies](https://docs.flagger.app/usage/deployment-strategies)
+
+## 9.2. Instalar Flagger Load Tester
+```
+helm upgrade -i flagger-loadtester flagger/loadtester \
+--namespace=demo
+```
+
+## 9.3. Identificar los recursos para la configuración de Progressive Canary Deployment
+- Layer 7 management solution (Ingress, Mesh, etc.):
+- Deployment Ref (Nombre):
+- Ingress Ref (Nombre):
+- HPA Ref (Nombre, opcional):
+- Service Port (Port & Target Port):
+- Flagger Load tester URL (Interno):
+- Service App URL (Interno):
+
+# 10. Crear un Canary utilizando Flagger
+```yaml
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: demo-frontend
+  namespace: demo
+spec:
+  provider: <L7-MANAGER>
+  # deployment reference
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: <DEPLOY_NAME>
+  # ingress reference
+  ingressRef:
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    name: <INGRESS_NAME>
+  # HPA reference (optional)
+  autoscalerRef:
+    apiVersion: autoscaling/v2
+    kind: HorizontalPodAutoscaler
+    name: <HPA_NAME>
+
+  # the maximum time in seconds for the canary deployment
+  # to make progress before it is rollback (default 600s)
+  progressDeadlineSeconds: 60
+  service:
+    # ClusterIP port number
+    port: <SVC_PORT>
+    # container port number or name
+    targetPort: <SVC_PORT>
+  analysis:
+    # schedule interval (default 60s)
+    interval: 10s
+    # max number of failed metric checks before rollback
+    threshold: 10
+    # max traffic percentage routed to canary
+    # percentage (0-100)
+    maxWeight: 70
+    # canary increment step
+    # percentage (0-100)
+    stepWeight: 5
+    # NGINX Prometheus checks
+    metrics:
+    - name: request-success-rate
+      # minimum req success rate (non 5xx responses)
+      # percentage (0-100)
+      thresholdRange:
+        min: 99
+      interval: 2m
+    # testing (optional)
+    webhooks:
+      - name: "flagger load test"
+        type: rollout
+        # URL EJ:  http://flagger-loadtester.default/
+        url: <LOADTESTER_URL>
+        timeout: 10s
+        metadata:
+					type: cmd
+          # Load tester EJ: "hey -z 120s -q 10 -c 2 http://webpage.com"
+          cmd: <HEY_CONFIG_INGRESS_URL>
+```
+- Hey Config
+  - -z Tiempo de la prueba
+	- -q Cantidad de hits
+  - -c Usuarios concurrentes
+
+
+## 10.1. Aplicar el Canary
+## 10.2. Validar el estado
+```
+kubectl get canary demo-frontend -n demo
+kubectl describe canary demo-frontend -n demo
+```
+
+## 10.3. Validar pods, service, ingress
+Se crean nuevos pods (PRIMARY) y nuevos services (PRIMARY & CANARY)
+```
+kubectl get pods,svc,ingress
+kubectl get deploy,hpa
+```
+
+
+# 11. Opcional: Configurar Kubeview
+```
+kubectl create ns kubeview
+kubectl config set-context --current --namespace kubeview
+
+cd ~
+git clone https://github.com/benc-uk/kubeview
+cd kubeview/charts/
+
+helm install kubeview kubeview --namespace kubeview
+
+kubectl expose --name svc-kubeview --type NodePort deployment kubeview --port 8000
+```
+
+## 11.1. Revisar en Browser
+- namespace: demo
+
+# 12. Actualizar la versión de la imagen
+## 12.1. En un Split Terminal, abrir el get del canary.
+```
+kubectl get canary demo-frontend -w
+```
+Estado: Initialized
+
+## 12.2. Cambiar la version de la imagen (2)
+```
+kubectl -n demo set image deployment demo-frontend demo=cachac/demo-frontend:2
+```
+
+# 13. Visualizar resultados
+## 13.1. Canary status:
+```
+demo-frontend   Progressing   5
+demo-frontend   Progressing   70
+demo-frontend   Promoting     0
+demo-frontend   Finalising    0
+demo-frontend   Succeeded     0
+```
+
+## 13.2. Kubeview (auto refresh 5s)
+Se crean nuevos Pods, el service-canary dirige el tráfico al nuevo Pod
+
+## 13.3. Validar la nueva versión del App en browser
+- El 5% del tráfico es dirigido al Canary
+- Progresivamente aumentará el tráfico hasta el 70%
+- Flagger Load Tester le está enviando tráfico sintético (Hey) para probar el nuevo Pod
+- Si el nuevo pod cumple con los requerimientos, pasan a llamarse PRIMARY
+
+
+# 14. Opcional. Explorar otras versiones: 3, 4, 5.
+
+## 14.1. Opcional: Validar logs de todos los pods
+```
+sudo curl -s https://raw.githubusercontent.com/johanhaleby/kubetail/master/kubetail -o /usr/local/bin/kubetail
+azureuser@testintAutomation:~/demo$ sudo chmod +x /usr/local/bin/kubetail
+
+kubetail demo-frontend
+```
+
+# 15. Zero downtime deployments
+> [zero-downtime-deployments](https://docs.flagger.app/tutorials/zero-downtime-deployments)
